@@ -169,9 +169,7 @@ async function openChat(id){
  cur=chats.find(c=>c.id===id);if(!cur)return;
  $('#app').classList.add('chat');$('#empty').hidden=true;$('#room').hidden=false;drawHead();drawList();
  replyTo=null;pend=null;drawPrev();$('#msgs').innerHTML='<p class="mut">Carregando mensagens…</p>';
-  isAdmin=false;adminId=null;
- if(cur.kind==='group'){const {data:cg}=await sb.from('conversations').select('created_by').eq('id',id).maybeSingle();
-  if(!cur||cur.id!==id)return;adminId=cg?cg.created_by:null;isAdmin=adminId===me.id;drawHead()}username,display_name,avatar,avatar_url)').eq('conversation_id',id).order('id',{ascending:false}).limit(100);
+ const {data,error}=await sb.from('messages').select('id,user_id,content,created_at,image_path,reply_to,profiles!user_id(username,display_name,avatar,avatar_url)').eq('conversation_id',id).order('id',{ascending:false}).limit(100);
  if(!cur||cur.id!==id)return;
  if(error)return toast('Erro ao carregar mensagens: '+error.message,1);
  $('#msgs').innerHTML=data.length?'':'<p class="mut">Nenhuma mensagem ainda. Diga oi! 👋</p>';
@@ -239,31 +237,14 @@ function explore(){
   <select id="i">${ICONS.map(i=>`<option>${i}</option>`).join('')}</select><button class="btn" id="ok">Criar grupo</button>`);
   f.querySelector('#ok').onclick=async()=>{const n=f.querySelector('#n').value.trim();if(n.length<2)return toast('Dê um nome ao grupo (mín. 2 letras)',1);
    const {data,error}=await sb.rpc('create_group',{n,d:f.querySelector('#d').value,i:f.querySelector('#i').value});
-   if(error)return toast(error.message.includes('banned')?'Você foi removido deste grupo pela administradora':'Erro ao entrar: '+error.message,1);f.remove();await loadChats();openChat(data)}};
+   if(error)return toast('Erro ao criar grupo: '+error.message,1);f.remove();await loadChats();openChat(data)}};
 }
 
 /* ---------- ações da conversa ---------- */
 async function members(){
- const {data,error}=await sb.from('conversation_members').select('user_id,joined_at,profiles(username,display_name,avatar,avatar_url)').eq('conversation_id',cur.id).order('joined_at');
+ const {data,error}=await sb.from('conversation_members').select('profiles(username,avatar)').eq('conversation_id',cur.id);
  if(error)return toast('Erro ao listar participantes',1);
- const cid=cur.id;
- const m=modal(`<h2>👥 Participantes (${data.length})</h2>${isAdmin?'<p class="mut">Toque em uma pessoa para ver as opções.</p>':''}
- ${data.map(x=>{const p=x.profiles||{username:'?'};
-  return `<div class="row" data-u="${x.user_id}" style="cursor:${isAdmin&&x.user_id!==me.id?'pointer':'default'}"><div class="av">${avHtml(p)}</div>
-  <div class="mid"><b>${esc(p.display_name||p.username)}</b><small>@${esc(p.username)}</small></div>
-  ${x.user_id===adminId?'<span class="fire on">👑 Admin</span>':''}${x.user_id===me.id?'<span class="mut">você</span>':''}</div>`}).join('')}`);
- m.addEventListener('click',e=>{
-  const r=e.target.closest('.row');if(!r||!isAdmin)return;
-  const u=r.dataset.u;if(u===me.id)return;
-  const p=(data.find(y=>y.user_id===u)||{}).profiles||{username:'?'};
-  const f=modal(`<div style="text-align:center"><div class="av big">${avHtml(p)}</div><h2>${esc(p.display_name||p.username)}</h2><p class="mut">@${esc(p.username)}</p></div>
-  <button class="btn" id="rm" style="background:linear-gradient(135deg,#be123c,#f43f5e)">🚫 Remover do grupo</button><button class="btn alt" id="bk">Voltar</button>`);
-  f.querySelector('#bk').onclick=members;
-  f.querySelector('#rm').onclick=async()=>{
-   if(!confirm(`Remover ${p.display_name||p.username} do grupo? A pessoa não poderá mais enviar nem receber mensagens, nem entrar de novo.`))return;
-   const {error}=await sb.rpc('remove_member',{cid,target:u});
-   if(error)return toast('Erro ao remover: '+error.message,1);
-   toast('Participante removido');loadChats();members()}});
+ modal(`<h2>${data.length} participantes</h2>${data.map(x=>`<div class="row" style="cursor:default"><div class="av">${esc(x.profiles.avatar)}</div><b>${esc(x.profiles.username)}</b></div>`).join('')}`);
 }
 async function toggleMute(){const v=!cur.muted;
  const {error}=await sb.from('conversation_members').update({muted:v}).eq('conversation_id',cur.id).eq('user_id',me.id);
@@ -295,7 +276,7 @@ $('#bEmo').onclick=()=>$('#emo').classList.toggle('on');
 $('#emo').onclick=e=>{const b=e.target.closest('button');if(b){$('#inp').value+=b.textContent;$('#inp').focus()}};
 addEventListener('offline',()=>setConn(false));
 /* ================= v2: perfil, imagens, reações, respostas ================= */
-let rx={},pend=null,replyTo=null,sending=false,isAdmin=false,adminId=null;
+let rx={},pend=null,replyTo=null,sending=false;
 const RX=['❤️','😂','😭','🔥','👍','😮'];
 const GAL={'Fofos':['🥰','😊','🥺','😇','🌸','🧸','🍓','💜'],'Engraçados':['🤪','😎','🤡','👻','💩','🤠','🥳','🙃'],'Animais':['🐱','🐶','🦊','🐼','🐸','🦄','🐙','🦁','🐧','🐰'],'Ícones':['🔥','⚡','🌙','🎧','👾','🚀','💎','🎮']};
 const avHtml=p=>p&&p.avatar_url?`<img src="${esc(p.avatar_url)}" alt="">`:esc((p&&p.avatar)||'🙂');
@@ -311,7 +292,7 @@ function addMsg(m){
  ${m.reply_to?`<div class="rq">↩️ ${rp?esc((rp.querySelector('.tx').textContent||'📷 Imagem').slice(0,60)):'mensagem'}</div>`:''}
  ${m.image_path?`<img class="pic" data-path="${esc(m.image_path)}" alt="imagem enviada">`:''}
  <span class="tx">${esc(m.content)}</span><span class="t">${hm(m.created_at)}${mine?' ✓ enviada':''}</span><div class="rx"></div>
- <div class="acts"><button data-a="r" title="Reagir">😊</button><button data-a="q" title="Responder">↩️</button><button data-a="c" title="Copiar">📋</button>${mine||isAdmin?`<button data-a="d" title="${mine?'Apagar':'Excluir mensagem (admin)'}">🗑️</button>`:''}</div>`;
+ <div class="acts"><button data-a="r" title="Reagir">😊</button><button data-a="q" title="Responder">↩️</button><button data-a="c" title="Copiar">📋</button>${mine?'<button data-a="d" title="Apagar">🗑️</button>':''}</div>`;
  box.appendChild(d);signImgs()}
 async function signImgs(){
  const els=[...document.querySelectorAll('img.pic[data-path]:not([src])')];if(!els.length)return;
@@ -338,10 +319,7 @@ $('#msgs').onclick=async e=>{
  if(a==='r'){const o=d.querySelector('.rp');if(o)return o.remove();const p=document.createElement('div');p.className='acts rp';p.innerHTML=RX.map(x=>`<button data-e="${x}">${x}</button>`).join('');d.appendChild(p)}
  if(a==='q'){replyTo={id,text:(tx||'📷 Imagem').slice(0,60)};drawPrev();$('#inp').focus()}
  if(a==='c'){try{await navigator.clipboard.writeText(tx);toast('Mensagem copiada')}catch{toast('Não foi possível copiar',1)}}
-  if(a==='d'){const own=d.classList.contains('mine');
-  if(!confirm(own?'Apagar esta mensagem?':'Excluir esta mensagem de outra pessoa? Ela vai sumir para todos os participantes.'))return;
-  const {error}=own?await sb.from('messages').delete().eq('id',id):await sb.rpc('delete_message_admin',{mid:id});
-  if(error)return toast('Erro ao excluir: '+error.message,1);d.remove();loadChats();toast('Mensagem excluída')}};{const {error}=await sb.from('messages').delete().eq('id',id);if(error)return toast('Erro ao apagar: '+error.message,1);d.remove();loadChats()}};
+ if(a==='d'&&confirm('Apagar esta mensagem?')){const {error}=await sb.from('messages').delete().eq('id',id);if(error)return toast('Erro ao apagar: '+error.message,1);d.remove();loadChats()}};
 $('#msgs').addEventListener('load',scroll,true);
 
 function drawPrev(){const p=$('#prev');let h='';
