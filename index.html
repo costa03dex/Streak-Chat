@@ -1,1 +1,267 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>STREAK CHAT 🔥</title>
+<style>
+:root{--bg:#0f0720;--p:#8b5cf6;--l:#c4b5fd;--g:rgba(255,255,255,.07);--b:rgba(255,255,255,.13)}
+*{box-sizing:border-box;margin:0}
+body{font:15px/1.4 system-ui,-apple-system,Segoe UI,sans-serif;color:#f3eeff;height:100dvh;overflow:hidden;
+background:radial-gradient(circle at 15% 0,#3b1a7a,transparent 50%),radial-gradient(circle at 95% 100%,#5b21b6,transparent 45%),var(--bg)}
+button,input,select{font:inherit;color:inherit}
+.glass{background:var(--g);border:1px solid var(--b);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-radius:20px}
+#app{display:none;height:100dvh;padding:12px;gap:12px;position:relative}#app.on{display:flex}
+aside{width:340px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;padding:14px}
+main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.logo{font-weight:800;font-size:19px;letter-spacing:-.3px;background:linear-gradient(90deg,#fff,var(--l));-webkit-background-clip:text;background-clip:text;color:transparent}
+#conn{font-size:12px;color:#fca5a5;display:flex;align-items:center;gap:5px}#conn i{width:8px;height:8px;border-radius:50%;background:#f87171}
+#conn.ok{color:#86efac}#conn.ok i{background:#4ade80;box-shadow:0 0 8px #4ade80}
+.me{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:14px;background:rgba(139,92,246,.18);cursor:pointer;border:0;width:100%;text-align:left}
+.av{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;font-size:22px;background:linear-gradient(135deg,#7c3aed,#c084fc);flex-shrink:0}
+input,select{width:100%;padding:11px 14px;border-radius:14px;border:1px solid var(--b);background:rgba(0,0,0,.25);outline:none}
+input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(139,92,246,.3)}
+.btn{padding:11px 14px;border:0;border-radius:14px;cursor:pointer;font-weight:600;background:linear-gradient(135deg,#7c3aed,#a855f7);transition:transform .15s,filter .15s}
+.btn:hover{filter:brightness(1.12)}.btn:active{transform:scale(.97)}.btn:disabled{opacity:.5}
+.btn.alt{background:var(--g);border:1px solid var(--b)}.btn.sm{padding:6px 12px;border-radius:10px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#list{flex:1;overflow:auto;display:flex;flex-direction:column;gap:4px}
+.row{display:flex;align-items:center;gap:10px;padding:9px;border-radius:14px;cursor:pointer;transition:background .15s}
+.row:hover,.row.act{background:rgba(139,92,246,.22)}
+.mid{flex:1;min-width:0}.mid small,.mut{color:#b9a9e0;display:block}.mid small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{background:#f43f5e;border-radius:99px;padding:1px 8px;font-size:12px;font-weight:700}
+.fire{font-size:13px;font-weight:700;color:#8d7bb5}.fire.on{color:#fb923c;text-shadow:0 0 10px #f97316}
+#empty{margin:auto;text-align:center;padding:30px}#empty b{font-size:46px;display:block}
+#room{display:flex;flex-direction:column;height:100%}#room[hidden],#empty[hidden]{display:none}
+.head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--b)}
+.head .mid{flex:1}.head small{display:block;color:#b9a9e0;font-size:12px}
+.ib{background:none;border:0;font-size:19px;cursor:pointer;padding:6px;border-radius:10px}.ib:hover{background:var(--g)}
+.back{display:none}
+#msgs{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:8px}
+.msg{max-width:min(75%,520px);padding:8px 12px;border-radius:16px 16px 16px 4px;background:rgba(255,255,255,.1);align-self:flex-start;word-break:break-word;animation:pop .2s ease}
+.msg.me{align-self:flex-end;border-radius:16px 16px 4px 16px;background:linear-gradient(135deg,#7c3aed,#a855f7);width:auto;padding:8px 12px;cursor:default;border:0}
+.msg .who{color:var(--l);font-weight:700;font-size:12px;display:block}.msg .t{display:block;text-align:right;font-size:11px;opacity:.7}
+@keyframes pop{from{opacity:0;transform:translateY(6px)}}
+.bar{display:flex;gap:8px;padding:12px;border-top:1px solid var(--b);position:relative}
+#emo{position:absolute;bottom:64px;left:12px;display:none;flex-wrap:wrap;width:260px;padding:8px;background:#1b0f3a;border:1px solid var(--b);border-radius:14px;z-index:5}
+#emo.on{display:flex}#emo button{background:none;border:0;font-size:22px;padding:4px;cursor:pointer}
+.ov{position:fixed;inset:0;background:rgba(5,0,15,.65);backdrop-filter:blur(4px);display:grid;place-items:center;z-index:20;padding:14px}
+.box{background:#1b0f3a;width:min(440px,100%);max-height:88dvh;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:12px;animation:pop .25s ease}
+.ics{display:flex;flex-wrap:wrap;gap:6px}.ics button{font-size:22px;background:var(--g);border:2px solid transparent;border-radius:12px;padding:4px 8px;cursor:pointer}.ics button.sel{border-color:var(--p)}
+.toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:#3b1a7a;border:1px solid var(--p);padding:10px 16px;border-radius:14px;z-index:50;max-width:90vw;animation:pop .25s}
+.toast.err{background:#7f1d3a;border-color:#f43f5e}
+@media(max-width:760px){#app{padding:0;gap:0}aside,main{position:absolute;inset:0;width:100%;border-radius:0;height:100dvh}
+main{transform:translateX(100%);transition:transform .3s}#app.chat main{transform:none}.back{display:block}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+ <aside class="glass">
+  <div class="top"><span class="logo">🔥 STREAK CHAT</span><span id="conn"><i></i><span>Conectando…</span></span></div>
+  <button class="me" id="meBtn" title="Editar perfil"><div class="av" id="meAv"></div><div class="mid"><b id="meName"></b><small>Editar perfil</small></div></button>
+  <input id="q" placeholder="🔍 Pesquisar conversas">
+  <div class="two"><button class="btn" id="bNew">✉️ Nova conversa</button><button class="btn alt" id="bExp">🌐 Grupos</button></div>
+  <div id="list"></div>
+ </aside>
+ <main class="glass">
+  <div id="empty"><b>🔥</b><h2>Mantenha a chama acesa</h2><p class="mut">Abra uma conversa ou entre em um grupo.</p></div>
+  <div id="room" hidden>
+   <div class="head">
+    <button class="ib back" id="bBack">←</button><div class="av" id="hav"></div>
+    <div class="mid"><b id="htitle"></b><small id="hsub"></small></div>
+    <div id="hfire" style="text-align:right"></div>
+    <button class="ib" id="bMem" title="Participantes">👥</button><button class="ib" id="bBlock" title="Bloquear/desbloquear">🚫</button>
+    <button class="ib" id="bMute" title="Silenciar">🔔</button><button class="ib" id="bLeave" title="Sair">🚪</button>
+   </div>
+   <div id="msgs"></div>
+   <div class="bar"><div id="emo"></div><button class="ib" id="bEmo">😊</button><input id="inp" maxlength="2000" placeholder="Escreva uma mensagem…" autocomplete="off"><button class="btn" id="bSend">Enviar</button></div>
+  </div>
+ </main>
+</div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+/* ====== CONFIGURE AQUI (Supabase > Project Settings > API) ====== */
+const SB_URL = 'COLE_AQUI_A_URL_DO_PROJETO';      // ex: https://abcd1234.supabase.co
+const SB_KEY = 'COLE_AQUI_A_CHAVE_ANON_PUBLICA';  // anon / publishable key (NUNCA a service_role)
+/* ================================================================ */
+const $=s=>document.querySelector(s);
+const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ICONS=['😀','😎','🦊','🐼','🦄','🌙','⚡','🔥','🎧','🌸','👾','🐱'];
+const EMO=['😀','😂','😍','🥰','😎','🤔','😢','😡','👍','🙏','🔥','🎉','💜','✨','👀','🙌'];
+let sb,me,chats=[],cur=null,cache={},blocked=new Set(),loading=false;
+
+function toast(m,e){const t=document.createElement('div');t.className='toast'+(e?' err':'');t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),3500)}
+function modal(html,lock){document.querySelectorAll('.ov[data-m]').forEach(o=>o.remove());
+ const m=document.createElement('div');m.className='ov';m.dataset.m=1;m.innerHTML=`<div class="glass box">${html}</div>`;
+ if(!lock)m.onclick=e=>{if(e.target===m)m.remove()};document.body.appendChild(m);return m}
+const hm=d=>new Date(d).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+function left(ts){const ms=new Date(ts)-Date.now();if(ms<=0)return 'agora';const h=Math.floor(ms/36e5),m=Math.floor(ms%36e5/6e4);return h?`${h}h ${m}min`:`${m}min`}
+function setConn(ok){const c=$('#conn');c.className=ok?'ok':'';c.lastChild.textContent=ok?'Conectado':'Reconectando…'}
+
+/* ---------- entrada sem cadastro ---------- */
+function welcome(edit){
+ let av=edit?me.avatar:ICONS[0];
+ const m=modal(`<h2>${edit?'Seu perfil':'🔥 STREAK CHAT'}</h2><p class="mut">${edit?'Troque seu nome ou avatar.':'Escolha um nome e comece a conversar. Sem e-mail, sem senha.'}</p>
+ <input id="un" maxlength="24" placeholder="Nome de usuário" value="${edit?esc(me.username):''}">
+ <div class="ics">${ICONS.map(i=>`<button data-i="${i}" class="${i===av?'sel':''}">${i}</button>`).join('')}</div>
+ <button class="btn" id="go">${edit?'Salvar':'Entrar'}</button>`,!edit);
+ const q=s=>m.querySelector(s);
+ q('.ics').onclick=e=>{const b=e.target.closest('button');if(!b)return;av=b.dataset.i;m.querySelectorAll('.ics button').forEach(x=>x.classList.toggle('sel',x===b))};
+ const go=async()=>{const u=q('#un').value.trim();if(u.length<2)return toast('O nome precisa ter pelo menos 2 caracteres',1);
+  q('#go').disabled=true;
+  try{let {data:{session}}=await sb.auth.getSession();
+   if(!session){const r=await sb.auth.signInAnonymously();if(r.error)throw r.error;session=r.data.session}
+   const {data,error}=await sb.from('profiles').upsert({id:session.user.id,username:u,avatar:av}).select().single();
+   if(error)throw error;me=data;m.remove();
+   if(edit){$('#meName').textContent=me.username;$('#meAv').textContent=me.avatar;toast('Perfil atualizado')}else start()}
+  catch(e){toast(e.code==='23505'?'Esse nome já está em uso. Escolha outro.':'Não foi possível entrar: '+e.message,1);q('#go').disabled=false}};
+ q('#go').onclick=go;q('#un').onkeydown=e=>e.key==='Enter'&&go();q('#un').focus();
+}
+
+/* ---------- lista de conversas ---------- */
+async function loadChats(){
+ const {data,error}=await sb.rpc('my_chats');if(error)return toast('Erro ao carregar conversas: '+error.message,1);
+ chats=data;drawList();
+ if(cur){const c=chats.find(x=>x.id===cur.id);if(c){cur=c;drawHead()}}
+}
+function drawList(){
+ const q=$('#q').value.toLowerCase(),l=chats.filter(c=>(c.title||'').toLowerCase().includes(q));
+ $('#list').innerHTML=l.length?l.map(c=>`<div class="row ${cur&&cur.id===c.id?'act':''}" data-id="${c.id}"><div class="av">${esc(c.icon)}</div>
+ <div class="mid"><b>${esc(c.title)}</b> ${c.streak?`<span class="fire on">🔥${c.streak}</span>`:''}<small>${esc(c.last_content||'Sem mensagens ainda')}</small></div>
+ ${c.muted?'🔕':''}${c.unread&&!c.muted?`<span class="badge">${c.unread}</span>`:''}</div>`).join('')
+ :'<p class="mut" style="padding:12px">Nada por aqui ainda. Inicie uma conversa ou explore grupos.</p>';
+}
+function drawHead(){
+ const c=cur;$('#hav').textContent=c.icon;$('#htitle').textContent=c.title;
+ $('#hsub').textContent=c.kind==='group'?`${c.members} participantes`:'Conversa privada';
+ $('#hfire').title=c.kind==='group'?'Regra: 2 pessoas diferentes precisam enviar mensagem no dia':'Regra: as duas pessoas precisam enviar mensagem no dia';
+ $('#hfire').innerHTML=c.streak>0?`<span class="fire on">🔥 ${c.streak} ${c.streak>1?'dias':'dia'}</span><small>${c.done_today?'✓ Cumprido hoje':'Falta cumprir hoje'} · prazo ${left(c.expires_at)}</small>`
+  :`<span class="fire">🔥 0</span><small>Apagada · conversem hoje para acender</small>`;
+ $('#bMute').textContent=c.muted?'🔕':'🔔';$('#bBlock').hidden=c.kind!=='private'||!c.other_id;$('#bMem').hidden=c.kind!=='group';
+ $('#bBlock').textContent=blocked.has(c.other_id)?'✅':'🚫';
+}
+
+/* ---------- mensagens ---------- */
+async function openChat(id){
+ cur=chats.find(c=>c.id===id);if(!cur)return;
+ $('#app').classList.add('chat');$('#empty').hidden=true;$('#room').hidden=false;drawHead();drawList();
+ $('#msgs').innerHTML='<p class="mut">Carregando mensagens…</p>';
+ const {data,error}=await sb.from('messages').select('id,user_id,content,created_at,profiles(username,avatar)').eq('conversation_id',id).order('id',{ascending:false}).limit(100);
+ if(!cur||cur.id!==id)return;
+ if(error)return toast('Erro ao carregar mensagens: '+error.message,1);
+ $('#msgs').innerHTML=data.length?'':'<p class="mut">Nenhuma mensagem ainda. Diga oi! 👋</p>';
+ data.forEach(m=>cache[m.user_id]=m.profiles);data.reverse().forEach(addMsg);scroll();markRead();
+}
+function addMsg(m){
+ const box=$('#msgs');if(box.querySelector(`[data-id="${m.id}"]`))return;
+ if(!box.querySelector('.msg'))box.innerHTML='';
+ const mine=m.user_id===me.id,p=cache[m.user_id]||{username:'?',avatar:''};
+ const d=document.createElement('div');d.className='msg'+(mine?' me':'');d.dataset.id=m.id;
+ d.innerHTML=`${mine?'':`<span class="who">${esc(p.avatar)} ${esc(p.username)}</span>`}<span>${esc(m.content)}</span><span class="t">${hm(m.created_at)}${mine?' ✓ enviada':''}</span>`;
+ box.appendChild(d)}
+const scroll=()=>{const b=$('#msgs');b.scrollTop=b.scrollHeight};
+const markRead=()=>cur&&sb.rpc('mark_read',{cid:cur.id});
+async function send(){
+ const t=$('#inp').value.trim();if(!t||!cur)return;$('#inp').value='';
+ const {data,error}=await sb.from('messages').insert({conversation_id:cur.id,user_id:me.id,content:t}).select('id,user_id,content,created_at').single();
+ if(error){$('#inp').value=t;return toast(error.message.includes('blocked')?'Não é possível enviar: há um bloqueio entre vocês':'Falha ao enviar. Tente novamente.',1)}
+ cache[me.id]=me;addMsg(data);scroll();loadChats();
+}
+
+/* ---------- realtime ---------- */
+function subscribe(){
+ sb.channel('app')
+ .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},async p=>{
+  const m=p.new;
+  if(m.user_id!==me.id&&!cache[m.user_id]){const {data}=await sb.from('profiles').select('username,avatar').eq('id',m.user_id).maybeSingle();cache[m.user_id]=data||{username:'?',avatar:''}}
+  if(cur&&cur.id===m.conversation_id){addMsg(m);scroll();if(m.user_id!==me.id)markRead()}
+  else if(m.user_id!==me.id){const c=chats.find(x=>x.id===m.conversation_id);if(!c||!c.muted)toast(`💬 ${(cache[m.user_id]||{}).username||'Nova mensagem'}: ${m.content.slice(0,40)}`)}
+  loadChats()})
+ .on('postgres_changes',{event:'*',schema:'public',table:'conversation_streaks'},()=>loadChats())
+ .on('postgres_changes',{event:'*',schema:'public',table:'conversation_members'},()=>loadChats())
+ .subscribe(s=>setConn(s==='SUBSCRIBED'));
+}
+
+/* ---------- modais: nova conversa e grupos ---------- */
+function newChat(){
+ const m=modal(`<h2>Nova conversa</h2><input id="s" placeholder="Buscar pessoas pelo nome (mín. 2 letras)"><div id="res"></div>`);
+ const q=s=>m.querySelector(s);let t;
+ q('#s').oninput=()=>{clearTimeout(t);t=setTimeout(async()=>{
+  const v=q('#s').value.trim().replace(/[%_,()]/g,'');if(v.length<2){q('#res').innerHTML='';return}
+  const {data,error}=await sb.from('profiles').select('id,username,avatar').ilike('username','%'+v+'%').neq('id',me.id).limit(20);
+  if(error)return toast('Erro na busca',1);
+  q('#res').innerHTML=data.length?data.map(u=>`<div class="row" data-id="${u.id}"><div class="av">${esc(u.avatar)}</div><b>${esc(u.username)}</b></div>`).join(''):'<p class="mut">Ninguém encontrado com esse nome.</p>'},300)};
+ q('#res').onclick=async e=>{const r=e.target.closest('.row');if(!r)return;
+  const {data,error}=await sb.rpc('start_private',{other:r.dataset.id});
+  if(error)return toast(error.message.includes('blocked')?'Não é possível conversar: há um bloqueio':'Erro: '+error.message,1);
+  m.remove();await loadChats();openChat(data)};
+ q('#s').focus();
+}
+function explore(){
+ const m=modal(`<h2>Grupos públicos</h2><input id="s" placeholder="Buscar grupos"><button class="btn alt" id="mk">➕ Criar grupo</button><div id="res"><p class="mut">Carregando…</p></div>`);
+ const q=s=>m.querySelector(s);let t;
+ const load=async()=>{const {data,error}=await sb.rpc('explore_groups',{q:q('#s').value.trim().replace(/[%_]/g,'')});
+  if(error)return toast('Erro ao buscar grupos: '+error.message,1);
+  q('#res').innerHTML=data.length?data.map(g=>`<div class="row" style="cursor:default"><div class="av">${esc(g.icon)}</div><div class="mid"><b>${esc(g.name)}</b><small>${esc(g.description||'')} · ${g.members} participante${g.members===1?'':'s'}</small></div>
+   <button class="btn sm" data-id="${g.id}">${g.joined?'Abrir':'Entrar'}</button></div>`).join(''):'<p class="mut">Nenhum grupo encontrado. Crie o primeiro!</p>'};
+ q('#s').oninput=()=>{clearTimeout(t);t=setTimeout(load,300)};load();
+ q('#res').onclick=async e=>{const b=e.target.closest('button');if(!b)return;
+  const {error}=await sb.rpc('join_group',{cid:b.dataset.id});if(error)return toast('Erro ao entrar: '+error.message,1);
+  m.remove();await loadChats();openChat(b.dataset.id)};
+ q('#mk').onclick=()=>{const f=modal(`<h2>Criar grupo</h2><input id="n" maxlength="40" placeholder="Nome do grupo"><input id="d" maxlength="200" placeholder="Descrição">
+  <select id="i">${ICONS.map(i=>`<option>${i}</option>`).join('')}</select><button class="btn" id="ok">Criar grupo</button>`);
+  f.querySelector('#ok').onclick=async()=>{const n=f.querySelector('#n').value.trim();if(n.length<2)return toast('Dê um nome ao grupo (mín. 2 letras)',1);
+   const {data,error}=await sb.rpc('create_group',{n,d:f.querySelector('#d').value,i:f.querySelector('#i').value});
+   if(error)return toast('Erro ao criar grupo: '+error.message,1);f.remove();await loadChats();openChat(data)}};
+}
+
+/* ---------- ações da conversa ---------- */
+async function members(){
+ const {data,error}=await sb.from('conversation_members').select('profiles(username,avatar)').eq('conversation_id',cur.id);
+ if(error)return toast('Erro ao listar participantes',1);
+ modal(`<h2>${data.length} participantes</h2>${data.map(x=>`<div class="row" style="cursor:default"><div class="av">${esc(x.profiles.avatar)}</div><b>${esc(x.profiles.username)}</b></div>`).join('')}`);
+}
+async function toggleMute(){const v=!cur.muted;
+ const {error}=await sb.from('conversation_members').update({muted:v}).eq('conversation_id',cur.id).eq('user_id',me.id);
+ if(error)return toast('Erro ao silenciar',1);toast(v?'Conversa silenciada':'Som reativado');loadChats()}
+async function toggleBlock(){const o=cur.other_id,on=blocked.has(o);
+ if(!on&&!confirm('Bloquear este usuário? Vocês não poderão trocar mensagens.'))return;
+ const {error}=on?await sb.from('user_blocks').delete().eq('blocker',me.id).eq('blocked',o):await sb.from('user_blocks').insert({blocker:me.id,blocked:o});
+ if(error)return toast('Erro: '+error.message,1);on?blocked.delete(o):blocked.add(o);drawHead();toast(on?'Usuário desbloqueado':'Usuário bloqueado')}
+async function leave(){
+ if(!confirm(cur.kind==='group'?`Sair do grupo "${cur.title}"?`:'Sair desta conversa?'))return;
+ const {error}=await sb.from('conversation_members').delete().eq('conversation_id',cur.id).eq('user_id',me.id);
+ if(error)return toast('Erro ao sair: '+error.message,1);
+ cur=null;$('#room').hidden=true;$('#empty').hidden=false;$('#app').classList.remove('chat');loadChats()}
+
+/* ---------- inicialização ---------- */
+async function start(){
+ $('#app').classList.add('on');$('#meName').textContent=me.username;$('#meAv').textContent=me.avatar;
+ const {data}=await sb.from('user_blocks').select('blocked').eq('blocker',me.id);blocked=new Set((data||[]).map(b=>b.blocked));
+ loadChats();subscribe();setInterval(loadChats,60000);
+}
+$('#meBtn').onclick=()=>welcome(true);
+$('#q').oninput=drawList;$('#bNew').onclick=newChat;$('#bExp').onclick=explore;
+$('#list').onclick=e=>{const r=e.target.closest('.row');if(r)openChat(r.dataset.id)};
+$('#bBack').onclick=()=>$('#app').classList.remove('chat');
+$('#bSend').onclick=send;$('#inp').onkeydown=e=>e.key==='Enter'&&send();
+$('#bMute').onclick=toggleMute;$('#bBlock').onclick=toggleBlock;$('#bLeave').onclick=leave;$('#bMem').onclick=members;
+$('#emo').innerHTML=EMO.map(e=>`<button>${e}</button>`).join('');
+$('#bEmo').onclick=()=>$('#emo').classList.toggle('on');
+$('#emo').onclick=e=>{const b=e.target.closest('button');if(b){$('#inp').value+=b.textContent;$('#inp').focus()}};
+addEventListener('offline',()=>setConn(false));
+
+(async()=>{
+ if(SB_URL.includes('COLE_AQUI')||SB_KEY.includes('COLE_AQUI'))
+  return modal('<h2>Configuração pendente</h2><p class="mut">Abra o index.html e preencha SB_URL e SB_KEY no início do script.</p>',true);
+ sb=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
+ const {data:{session}}=await sb.auth.getSession();
+ if(session){const {data}=await sb.from('profiles').select().eq('id',session.user.id).maybeSingle();if(data){me=data;return start()}}
+ welcome();
+})();
+</script>
+</body>
+</html>
