@@ -54,6 +54,21 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(139,92,
 @media(max-width:760px){#app{padding:0;gap:0}aside,main{position:absolute;inset:0;width:100%;border-radius:0;height:100dvh}
 main{transform:translateX(100%);transition:transform .3s}#app.chat main{transform:none}.back{display:block}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+textarea{width:100%;padding:11px 14px;border-radius:14px;border:1px solid var(--b);background:rgba(0,0,0,.25);outline:none;resize:none;max-height:120px;font:inherit;color:inherit}
+textarea:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(139,92,246,.3)}
+.bar{align-items:flex-end}#emo{bottom:70px}
+.av{overflow:hidden}.av img,.pv img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.av.big{width:96px;height:96px;font-size:50px;border-radius:30px;margin:0 auto 8px;box-shadow:0 0 28px rgba(168,85,247,.6)}
+.msg{position:relative}.msg.mine{align-self:flex-end;border-radius:16px 16px 4px 16px;background:linear-gradient(135deg,#7c3aed,#a855f7)}
+.msg .pic{display:block;max-width:100%;max-height:300px;border-radius:12px;margin:4px 0;cursor:zoom-in;min-height:40px;min-width:120px;background:rgba(0,0,0,.2)}
+.who i{opacity:.6;font-style:normal;font-weight:400}.rq{border-left:3px solid var(--l);padding:2px 8px;font-size:12px;opacity:.85;margin-bottom:4px}
+.mini{display:inline-block;width:18px;height:18px;border-radius:6px;overflow:hidden;vertical-align:middle;text-align:center;font-size:13px;line-height:18px}.mini img{width:100%;height:100%;object-fit:cover}
+.rx{display:flex;gap:4px;flex-wrap:wrap}.rx:empty{display:none}.rx button,.acts button{background:rgba(0,0,0,.25);border:1px solid var(--b);border-radius:99px;padding:1px 8px;cursor:pointer;margin-top:4px}
+.rx button.on{border-color:var(--l);background:rgba(196,181,253,.25)}
+.acts{display:none;position:absolute;top:-18px;right:6px;background:#1b0f3a;border:1px solid var(--b);border-radius:12px;padding:2px 4px;gap:2px;z-index:3}
+.acts button{border:0;margin:0;background:none;padding:2px 5px}.msg:hover .acts,.msg.tap .acts{display:flex}.acts.rp{top:-52px;display:flex}
+.pv{display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:13px;border-top:1px solid var(--b)}.pv img{height:70px;width:auto;border-radius:10px}
+.pv button{margin-left:auto;background:none;border:0;cursor:pointer;color:var(--l)}#prev[hidden]{display:none}.row2{display:flex;gap:8px}
 </style>
 </head>
 <body>
@@ -76,7 +91,7 @@ main{transform:translateX(100%);transition:transform .3s}#app.chat main{transfor
     <button class="ib" id="bMute" title="Silenciar">🔔</button><button class="ib" id="bLeave" title="Sair">🚪</button>
    </div>
    <div id="msgs"></div>
-   <div class="bar"><div id="emo"></div><button class="ib" id="bEmo">😊</button><input id="inp" maxlength="2000" placeholder="Escreva uma mensagem…" autocomplete="off"><button class="btn" id="bSend">Enviar</button></div>
+   <div id="prev" hidden></div><div class="bar"><div id="emo"></div><button class="ib" id="bEmo">😊</button><button class="ib" id="bAtt" title="Anexar imagem">📎</button><input type="file" id="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden><textarea id="inp" rows="1" maxlength="2000" placeholder="Escreva uma mensagem… (Enter envia, Shift+Enter quebra linha)" autocomplete="off"></textarea><button class="btn" id="bSend">Enviar</button></div>
   </div>
  </main>
 </div>
@@ -153,14 +168,14 @@ function drawHead(){
 async function openChat(id){
  cur=chats.find(c=>c.id===id);if(!cur)return;
  $('#app').classList.add('chat');$('#empty').hidden=true;$('#room').hidden=false;drawHead();drawList();
- $('#msgs').innerHTML='<p class="mut">Carregando mensagens…</p>';
- const {data,error}=await sb.from('messages').select('id,user_id,content,created_at,profiles(username,avatar)').eq('conversation_id',id).order('id',{ascending:false}).limit(100);
+ replyTo=null;pend=null;drawPrev();$('#msgs').innerHTML='<p class="mut">Carregando mensagens…</p>';
+ const {data,error}=await sb.from('messages').select('id,user_id,content,created_at,image_path,reply_to,profiles(username,display_name,avatar,avatar_url)').eq('conversation_id',id).order('id',{ascending:false}).limit(100);
  if(!cur||cur.id!==id)return;
  if(error)return toast('Erro ao carregar mensagens: '+error.message,1);
  $('#msgs').innerHTML=data.length?'':'<p class="mut">Nenhuma mensagem ainda. Diga oi! 👋</p>';
- data.forEach(m=>cache[m.user_id]=m.profiles);data.reverse().forEach(addMsg);scroll();markRead();
+ data.forEach(m=>cache[m.user_id]=m.profiles);data.reverse().forEach(addMsg);scroll();markRead();loadRx();
 }
-function addMsg(m){
+function addMsgOld(m){
  const box=$('#msgs');if(box.querySelector(`[data-id="${m.id}"]`))return;
  if(!box.querySelector('.msg'))box.innerHTML='';
  const mine=m.user_id===me.id,p=cache[m.user_id]||{username:'?',avatar:''};
@@ -169,7 +184,7 @@ function addMsg(m){
  box.appendChild(d)}
 const scroll=()=>{const b=$('#msgs');b.scrollTop=b.scrollHeight};
 const markRead=()=>cur&&sb.rpc('mark_read',{cid:cur.id});
-async function send(){
+async function sendOld(){
  const t=$('#inp').value.trim();if(!t||!cur)return;$('#inp').value='';
  const {data,error}=await sb.from('messages').insert({conversation_id:cur.id,user_id:me.id,content:t}).select('id,user_id,content,created_at').single();
  if(error){$('#inp').value=t;return toast(error.message.includes('blocked')?'Não é possível enviar: há um bloqueio entre vocês':'Falha ao enviar. Tente novamente.',1)}
@@ -181,10 +196,12 @@ function subscribe(){
  sb.channel('app')
  .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},async p=>{
   const m=p.new;
-  if(m.user_id!==me.id&&!cache[m.user_id]){const {data}=await sb.from('profiles').select('username,avatar').eq('id',m.user_id).maybeSingle();cache[m.user_id]=data||{username:'?',avatar:''}}
+  if(m.user_id!==me.id&&!cache[m.user_id]){const {data}=await sb.from('profiles').select('username,display_name,avatar,avatar_url').eq('id',m.user_id).maybeSingle();cache[m.user_id]=data||{username:'?',avatar:''}}
   if(cur&&cur.id===m.conversation_id){addMsg(m);scroll();if(m.user_id!==me.id)markRead()}
   else if(m.user_id!==me.id){const c=chats.find(x=>x.id===m.conversation_id);if(!c||!c.muted)toast(`💬 ${(cache[m.user_id]||{}).username||'Nova mensagem'}: ${m.content.slice(0,40)}`)}
   loadChats()})
+ .on('postgres_changes',{event:'DELETE',schema:'public',table:'messages'},p=>{const el=document.querySelector(`.msg[data-id="${p.old.id}"]`);if(el)el.remove();loadChats()})
+ .on('postgres_changes',{event:'*',schema:'public',table:'message_reactions'},()=>loadRx())
  .on('postgres_changes',{event:'*',schema:'public',table:'conversation_streaks'},()=>loadChats())
  .on('postgres_changes',{event:'*',schema:'public',table:'conversation_members'},()=>loadChats())
  .subscribe(s=>setConn(s==='SUBSCRIBED'));
@@ -244,25 +261,126 @@ async function leave(){
 
 /* ---------- inicialização ---------- */
 async function start(){
- $('#app').classList.add('on');$('#meName').textContent=me.username;$('#meAv').textContent=me.avatar;
+ $('#app').classList.add('on');drawMe();
  const {data}=await sb.from('user_blocks').select('blocked').eq('blocker',me.id);blocked=new Set((data||[]).map(b=>b.blocked));
  loadChats();subscribe();setInterval(loadChats,60000);
 }
-$('#meBtn').onclick=()=>welcome(true);
+$('#meBtn').onclick=profile;
 $('#q').oninput=drawList;$('#bNew').onclick=newChat;$('#bExp').onclick=explore;
 $('#list').onclick=e=>{const r=e.target.closest('.row');if(r)openChat(r.dataset.id)};
 $('#bBack').onclick=()=>$('#app').classList.remove('chat');
-$('#bSend').onclick=send;$('#inp').onkeydown=e=>e.key==='Enter'&&send();
+$('#bSend').onclick=send;$('#inp').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();send()}};$('#inp').oninput=e=>{e.target.style.height='auto';e.target.style.height=Math.min(e.target.scrollHeight,120)+'px'};
 $('#bMute').onclick=toggleMute;$('#bBlock').onclick=toggleBlock;$('#bLeave').onclick=leave;$('#bMem').onclick=members;
 $('#emo').innerHTML=EMO.map(e=>`<button>${e}</button>`).join('');
 $('#bEmo').onclick=()=>$('#emo').classList.toggle('on');
 $('#emo').onclick=e=>{const b=e.target.closest('button');if(b){$('#inp').value+=b.textContent;$('#inp').focus()}};
 addEventListener('offline',()=>setConn(false));
+/* ================= v2: perfil, imagens, reações, respostas ================= */
+let rx={},pend=null,replyTo=null,sending=false;
+const RX=['❤️','😂','😭','🔥','👍','😮'];
+const GAL={'Fofos':['🥰','😊','🥺','😇','🌸','🧸','🍓','💜'],'Engraçados':['🤪','😎','🤡','👻','💩','🤠','🥳','🙃'],'Animais':['🐱','🐶','🦊','🐼','🐸','🦄','🐙','🦁','🐧','🐰'],'Ícones':['🔥','⚡','🌙','🎧','👾','🚀','💎','🎮']};
+const avHtml=p=>p&&p.avatar_url?`<img src="${esc(p.avatar_url)}" alt="">`:esc((p&&p.avatar)||'🙂');
+const drawMe=()=>{$('#meName').textContent=me.display_name||me.username;$('#meAv').innerHTML=avHtml(me)};
+
+function addMsg(m){
+ const box=$('#msgs');if(box.querySelector(`[data-id="${m.id}"]`))return;
+ if(!box.querySelector('.msg'))box.innerHTML='';
+ const mine=m.user_id===me.id,p=cache[m.user_id]||{username:'?'};
+ const rp=m.reply_to&&box.querySelector(`[data-id="${m.reply_to}"]`);
+ const d=document.createElement('div');d.className='msg'+(mine?' mine':'');d.dataset.id=m.id;
+ d.innerHTML=`${mine?'':`<span class="who"><span class="mini">${avHtml(p)}</span> ${esc(p.display_name||p.username)} <i>@${esc(p.username)}</i></span>`}
+ ${m.reply_to?`<div class="rq">↩️ ${rp?esc((rp.querySelector('.tx').textContent||'📷 Imagem').slice(0,60)):'mensagem'}</div>`:''}
+ ${m.image_path?`<img class="pic" data-path="${esc(m.image_path)}" alt="imagem enviada">`:''}
+ <span class="tx">${esc(m.content)}</span><span class="t">${hm(m.created_at)}${mine?' ✓ enviada':''}</span><div class="rx"></div>
+ <div class="acts"><button data-a="r" title="Reagir">😊</button><button data-a="q" title="Responder">↩️</button><button data-a="c" title="Copiar">📋</button>${mine?'<button data-a="d" title="Apagar">🗑️</button>':''}</div>`;
+ box.appendChild(d);signImgs()}
+async function signImgs(){
+ const els=[...document.querySelectorAll('img.pic[data-path]:not([src])')];if(!els.length)return;
+ const {data}=await sb.storage.from('chat-images').createSignedUrls([...new Set(els.map(e=>e.dataset.path))],3600);
+ (data||[]).forEach(r=>{if(!r.signedUrl)return;document.querySelectorAll('img.pic[data-path]:not([src])').forEach(el=>{if(el.dataset.path===r.path)el.src=r.signedUrl})})}
+async function loadRx(){
+ const ids=[...document.querySelectorAll('.msg')].map(x=>+x.dataset.id);if(!ids.length)return;
+ const {data}=await sb.from('message_reactions').select('message_id,user_id,emoji').in('message_id',ids);
+ rx={};(data||[]).forEach(r=>(rx[r.message_id]=rx[r.message_id]||[]).push(r));
+ document.querySelectorAll('.msg').forEach(d=>{const l=rx[d.dataset.id]||[],c={};l.forEach(r=>c[r.emoji]=(c[r.emoji]||0)+1);
+  d.querySelector('.rx').innerHTML=Object.entries(c).map(([e,n])=>`<button data-e="${e}" class="${l.some(r=>r.user_id===me.id&&r.emoji===e)?'on':''}">${e} ${n}</button>`).join('')})}
+async function react(id,e){
+ document.querySelectorAll('.rp').forEach(x=>x.remove());
+ const has=(rx[id]||[]).some(r=>r.user_id===me.id&&r.emoji===e);
+ const {error}=has?await sb.from('message_reactions').delete().eq('message_id',id).eq('user_id',me.id).eq('emoji',e)
+  :await sb.from('message_reactions').insert({message_id:id,user_id:me.id,emoji:e});
+ if(error)toast('Erro ao reagir: '+error.message,1);loadRx()}
+$('#msgs').onclick=async e=>{
+ const d=e.target.closest('.msg');if(!d)return;const id=+d.dataset.id,b=e.target.closest('button'),tx=d.querySelector('.tx').textContent;
+ if(e.target.classList.contains('pic')&&e.target.src)return window.open(e.target.src,'_blank');
+ if(!b){d.classList.toggle('tap');return}
+ if(b.dataset.e)return react(id,b.dataset.e);
+ const a=b.dataset.a;
+ if(a==='r'){const o=d.querySelector('.rp');if(o)return o.remove();const p=document.createElement('div');p.className='acts rp';p.innerHTML=RX.map(x=>`<button data-e="${x}">${x}</button>`).join('');d.appendChild(p)}
+ if(a==='q'){replyTo={id,text:(tx||'📷 Imagem').slice(0,60)};drawPrev();$('#inp').focus()}
+ if(a==='c'){try{await navigator.clipboard.writeText(tx);toast('Mensagem copiada')}catch{toast('Não foi possível copiar',1)}}
+ if(a==='d'&&confirm('Apagar esta mensagem?')){const {error}=await sb.from('messages').delete().eq('id',id);if(error)return toast('Erro ao apagar: '+error.message,1);d.remove();loadChats()}};
+$('#msgs').addEventListener('load',scroll,true);
+
+function drawPrev(){const p=$('#prev');let h='';
+ if(replyTo)h+=`<div class="pv">↩️ Respondendo: ${esc(replyTo.text)}<button data-x="r">✕</button></div>`;
+ if(pend)h+=`<div class="pv"><img src="${pend.url}" alt="prévia"><button data-x="i">✕ Cancelar imagem</button></div>`;
+ p.hidden=!h;p.innerHTML=h}
+$('#prev').onclick=e=>{const x=e.target.dataset.x;if(x==='r')replyTo=null;if(x==='i'){URL.revokeObjectURL(pend.url);pend=null;$('#file').value=''}drawPrev()};
+$('#bAtt').onclick=()=>{if(!cur)return;$('#file').click()};
+$('#file').onchange=e=>{const f=e.target.files[0];if(!f)return;
+ if(!/^image\/(jpeg|png|webp|gif)$/.test(f.type)){e.target.value='';return toast('Formato inválido. Use JPG, PNG, WEBP ou GIF.',1)}
+ if(f.size>5*1048576){e.target.value='';return toast('Imagem muito grande (máx. 5 MB).',1)}
+ if(pend)URL.revokeObjectURL(pend.url);pend={file:f,url:URL.createObjectURL(f)};drawPrev()};
+async function send(){
+ const t=$('#inp').value.trim();if((!t&&!pend)||!cur||sending)return;sending=true;$('#bSend').disabled=true;
+ try{let path=null;
+  if(pend){path=`${cur.id}/${crypto.randomUUID()}.${pend.file.type.split('/')[1]}`;
+   const {error}=await sb.storage.from('chat-images').upload(path,pend.file,{contentType:pend.file.type});if(error)throw error}
+  const {data,error}=await sb.from('messages').insert({conversation_id:cur.id,user_id:me.id,content:t,image_path:path,reply_to:replyTo?replyTo.id:null})
+   .select('id,user_id,content,created_at,image_path,reply_to').single();
+  if(error)throw error;
+  $('#inp').value='';$('#inp').style.height='auto';if(pend)URL.revokeObjectURL(pend.url);pend=null;replyTo=null;$('#file').value='';drawPrev();
+  cache[me.id]=me;addMsg(data);scroll();loadChats()}
+ catch(e){toast(String(e.message).includes('blocked')?'Não é possível enviar: há um bloqueio entre vocês':'Falha ao enviar: '+e.message,1)}
+ sending=false;$('#bSend').disabled=false;$('#inp').focus()}
+
+function profile(){
+ const mx=Math.max(0,...chats.map(c=>c.streak));
+ const m=modal(`<div style="text-align:center"><div class="av big">${avHtml(me)}</div><h2>${esc(me.display_name||me.username)}</h2><p class="mut">@${esc(me.username)}</p>
+ <p>${esc(me.bio||'Sem bio ainda.')}</p><p class="mut">Entrou em ${new Date(me.created_at).toLocaleDateString('pt-BR')}<br>👥 ${chats.filter(c=>c.kind==='private').length} contatos · 🔥 maior sequência atual: ${mx} ${mx===1?'dia':'dias'}</p></div>
+ <button class="btn" id="ed">✏️ Editar perfil</button>`);
+ m.querySelector('#ed').onclick=editProfile}
+function editProfile(){
+ let av=me.avatar,url=me.avatar_url,file=null;
+ const m=modal(`<h2>Editar perfil</h2><div class="av big" id="pv"></div>
+ <input id="un" maxlength="24" placeholder="Nome de usuário (@)" value="${esc(me.username)}"><input id="dn" maxlength="40" placeholder="Nome de exibição" value="${esc(me.display_name||'')}">
+ <textarea id="bio" rows="2" maxlength="160" placeholder="Bio (até 160 caracteres)">${esc(me.bio||'')}</textarea>
+ <div class="row2"><button class="btn alt sm" id="up">📷 Enviar foto</button><button class="btn alt sm" id="rm">Remover foto</button></div>
+ <input type="file" id="pf" accept="image/jpeg,image/png,image/webp" hidden>
+ ${Object.entries(GAL).map(([k,v])=>`<small class="mut">${k}</small><div class="ics g">${v.map(i=>`<button data-i="${i}">${i}</button>`).join('')}</div>`).join('')}
+ <button class="btn" id="sv">Salvar</button>`);
+ const q=s=>m.querySelector(s),pv=()=>q('#pv').innerHTML=url?`<img src="${esc(url)}" alt="">`:esc(av);pv();
+ m.querySelectorAll('.g').forEach(g=>g.onclick=e=>{const b=e.target.closest('button');if(!b)return;av=b.dataset.i;url=null;file=null;pv()});
+ q('#up').onclick=()=>q('#pf').click();q('#rm').onclick=()=>{url=null;file=null;pv()};
+ q('#pf').onchange=e=>{const f=e.target.files[0];if(!f)return;
+  if(!/^image\/(jpeg|png|webp)$/.test(f.type))return toast('Formato inválido. Use JPG, PNG ou WEBP.',1);
+  if(f.size>2*1048576)return toast('Foto muito grande (máx. 2 MB).',1);file=f;url=URL.createObjectURL(f);pv()};
+ q('#sv').onclick=async()=>{const u=q('#un').value.trim();if(u.length<2)return toast('O nome de usuário precisa ter pelo menos 2 caracteres',1);
+  q('#sv').disabled=true;
+  try{let au=file?null:url;
+   if(file){const path=`${me.id}/${Date.now()}.${file.type.split('/')[1]}`;
+    const {error}=await sb.storage.from('avatars').upload(path,file,{contentType:file.type});if(error)throw error;
+    au=sb.storage.from('avatars').getPublicUrl(path).data.publicUrl}
+   const {data,error}=await sb.from('profiles').update({username:u,display_name:q('#dn').value.trim()||null,bio:q('#bio').value.trim()||null,avatar:av,avatar_url:au}).eq('id',me.id).select().single();
+   if(error)throw error;me=data;cache[me.id]=me;drawMe();m.remove();toast('Perfil salvo')}
+  catch(e){toast(e.code==='23505'?'Esse nome de usuário já está em uso.':'Erro ao salvar: '+e.message,1);q('#sv').disabled=false}}}
+
 
 (async()=>{
  if(SB_URL.includes('COLE_AQUI')||SB_KEY.includes('COLE_AQUI'))
   return modal('<h2>Configuração pendente</h2><p class="mut">Abra o index.html e preencha SB_URL e SB_KEY no início do script.</p>',true);
- sb=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
+ sb=supabase.createClient(new URL(SB_URL.trim()).origin,SB_KEY.trim(),{auth:{persistSession:true,autoRefreshToken:true}});
  const {data:{session}}=await sb.auth.getSession();
  if(session){const {data}=await sb.from('profiles').select().eq('id',session.user.id).maybeSingle();if(data){me=data;return start()}}
  welcome();
