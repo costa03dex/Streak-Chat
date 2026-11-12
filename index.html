@@ -169,7 +169,7 @@ async function openChat(id){
  cur=chats.find(c=>c.id===id);if(!cur)return;
  $('#app').classList.add('chat');$('#empty').hidden=true;$('#room').hidden=false;drawHead();drawList();
  replyTo=null;pend=null;drawPrev();$('#msgs').innerHTML='<p class="mut">Carregando mensagens…</p>';
- const {data,error}=await sb.from('messages').select('id,user_id,content,created_at,image_path,reply_to,profiles(username,display_name,avatar,avatar_url)').eq('conversation_id',id).order('id',{ascending:false}).limit(100);
+ const {data,error}=await sb.from('messages').select('id,user_id,content,created_at,image_path,reply_to,profiles!user_id(username,display_name,avatar,avatar_url)').eq('conversation_id',id).order('id',{ascending:false}).limit(100);
  if(!cur||cur.id!==id)return;
  if(error)return toast('Erro ao carregar mensagens: '+error.message,1);
  $('#msgs').innerHTML=data.length?'':'<p class="mut">Nenhuma mensagem ainda. Diga oi! 👋</p>';
